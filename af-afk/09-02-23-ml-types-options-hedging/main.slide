@@ -1,0 +1,318 @@
+
+# Genetic algos for fixing binomial options pricing
+
+Alex Baigent, Fluidity Money for ADFP
+9th February 2023
+
+## (Quick) finance crash course
+
+## What's an option?
+
+The right to buy or sell something at an agreed upon price before a certain
+date (ie, a stock) at a fixed price
+
+Call option: the right to buy something at a fixed price before a fixed date
+
+Put option: the right to sell something at a fixed price before a fixed date
+
+	Note that we're only discussing American options here
+
+## Financial contraptions
+
+Could...
+
+- Reduce your downside (hedging defined before)
+
+- Make money from chaotic conditions (straddling)
+
+- Constructing a portfolio that doesn't make or lose money (risk free portfolios)
+
+## How?
+
+- Hedging with binomial options pricing
+
+Binomial options pricing is the recursive application of a pricing
+function to determine the value of an option at a point in time.
+
+Assuming:
+
+1. Interest rate and risk free rate remains constant
+
+2. Risk neutral (investors are indifferent to risk)
+
+: by this, i mean noone's expecting something called a "risk premium",
+: the risk premium being yield in proportion to the risk
+
+<image here>
+
+## The math
+
+.image math.png
+
+## Some code
+
+.html code-left.html
+
+## Problems with this
+
+1. Have to guesstimate the probability of a price movement
+
+2. Have to guesstimate the change in the spread if you're not taking a
+computational answer
+
+## How could we solve this?
+
+1. Guesstimate the probability of a movement
+
+	p = ((1 + (n * r) - d) / (u - d)
+
+	p_u = p
+
+	p_d = 1 - p
+
+2. Run an iteration of the solution every second of the time to be traded
+
+: obviously, this is highly computationally intense
+
+## In practice...
+
+- Probably the latter or something bespoke
+
+How could we make this fun?
+
+- We could solve probabilities of movements by composing together
+"builder" functions and randomly building our own solution for
+estimation
+
+Why?
+
+- Probability in practice in a long time frame could be determined
+with a lot of things, we could compose and randomly generate a program
+that solves it for us
+
+- Collect a broad range of random sources to estimate the probability
+
+## ... Why (again)?
+
+Solving this problem with a genetic algorithm is stupid, though it's a
+great way to illustrate the raw form of biology and how redundant
+systems create fallover, in this case to solve a poorly defined
+problem at the expense of storage instead of compute
+
+## Signals and switches
+
+Two datatypes in our code:
+
+Signal:
+
+1. Produces a state which is "bearish" or "bullish"
+
+2. Comes from an outside source
+
+3. Could come from the market information itself
+
+4. "Bullish" in this context is a true statement
+
+	If signal strength >= 0.5 then bullish
+	else bearish
+
+Switch:
+
+1. "if, then jump (JUMP) - then return bullish"
+
+2. JUMPDEST replacement
+
+## Signals and switches cont
+
+IE (pretty representation):
+
+---
+
+	TWITTER "dogecoin popular"		# "?"
+	JUMP something			# "0.5"
+	JUMP bad				# "0.5"
+
+	something: JUMPDEST		# "0.5"
+	RETURN 0.075
+
+	bad: JUMPDEST			# 0.5
+	RETURN 0.02
+
+This way we can encode strength of guesstimates into the signal
+functions themselves.
+
+Basic custom ASM...
+
+## Switch in code:
+
+	type jumpdest_label = string
+
+	type destination = int
+
+	type switch =
+	  | JUMP of jumpdest_label
+	  | JUMPDEST of jumpdest_label
+	  | RETURN of float
+
+## Signals in code, first...
+
+We must take the function inputs to the `payoff_call` function and
+translate them into something that can be passed around easily.
+
+Remember
+
+	let rec payoff_call u p_u d p_d s k r n
+
+?
+
+We should translate it into...
+
+---
+
+	type estimation = float
+
+	type domain =
+	  { u           : float
+	  ; d           : float
+	  ; s           : float
+	  ; k           : float
+	  ; r           : float
+	  ; n           : int
+	  ; environment : competition }
+
+: probability_f replaces the explicit value that's provided for the
+: probability estimation
+
+## Signature of the signal module:
+
+---
+
+	type domain
+
+	module type Signal_s = sig
+	  type internal_state
+	  val estimate : internal_state -> domain -> estimation
+	end
+
+## How can we write some code that works with Twitter?
+
+---
+
+	module Twitter : Signal_s = struct
+	  type internal_state =
+	    { bullish_tweets            : int
+	    ; bearish_tweets            : int
+	    ; average_length_of_bullrun : int
+	    ; time_of_tweet_capture     : int }
+
+	  let estimate
+	    { bullish_tweets
+	    ; bearish_tweets
+	    ; average_length_of_bullrun
+	    ; _ }
+	    _
+	  =
+	    if bullish_tweets > bearish_tweets then 0.75
+	    else if average_length_of_bullrun > 50 (* 50 days *) then 0.2
+	    else 0.4
+
+Perhaps this code could try to estimate the length of a bullrun with a
+shitcoin on Twitter.
+
+## How do we actually select the right combination of the functions
+
+Great, so we've tools that let us build a program like this:
+
+---
+
+	TWITTER "dogecoin popular"		# "?"
+	JUMP something			# "0.5"
+	JUMP bad				# "0.5"
+
+	something: JUMPDEST		# "0.5"
+	RETURN 0.075
+
+	bad: JUMPDEST			# 0.5
+	RETURN 0.02
+
+How do we actually select which combination of switches and signals to
+use?
+
+### Solution: internal market
+
+## Twitter solution translated into code
+
+.html code-left2.html
+
+## Internal market
+
+Using program composition to randomly bash together any possible
+signal/switch combination that could be sent:
+
+---
+
+	let rec create_program signals =
+	  let l = List.length inputs in
+	  Fun.flip List.init begin fun _ -> match Random.int 2 with
+	    | 0 -> pick_random_switch ()
+	    | 1 -> pick_random_signal signals in
+
+	let signals = [ facebook ; twitter ; rsi ] in
+
+	let programs = List.init 10 (fun _ -> create_program signals) in
+
+	...
+
+## Backtesting
+
+---
+
+	| Call option price | Call option price change | Life until expiry
+	|-------------------|--------------------------|-------------------|
+	| 10                | 0                        | 5                 |
+	| 4                 | -6                       | 4                 |
+	| 6                 | 2                        | 3                 |
+	| 8                 | 2                        | 2                 |
+	| 14                | 6                        | 1                 |
+	| 15                | 1                        | 0                 |
+
+We can take this backdata and plug it into the function from before
+and compare the output of the function at any given point in time...
+
+First, to construct the environment:
+
+---
+
+	type credits = int
+
+	type environment =
+	  { programs_list     : (Signal_s.internal_state * program * credits) list
+	  ; credits_per_close : credits }
+
+## Take the binomial options pricing function to support environment...
+
+	let payoff_call { u ; d ; s ; k ; r ; environment } =
+	  let p, state = pick_probability_function environment in
+	  let p_u = p state in
+	  let p_d = 1. -. p state in
+	  payoff_call' u p_u d p_d s k r
+
+Translate the function `payoff_call u p_u d p_d s k r` into `let rec
+payoff_call environment` and start to backtest!
+
+: like jonathon's talk, this is about bringing it into the same
+: category or domain
+
+## Finally, we take the backdata to discover the best environment to use for this:
+
+	let perfect_environment = backtest
+
+## To recap
+
+1. Generate code that fills in the blanks with binomial options
+pricing (find the probability)
+
+2. Use backdata and genetic algorithms that fit a type signature to
+discover the best strategy for probability discovery with randomness
+
+3. Fill in the blanks with the payoff discovery for call options!

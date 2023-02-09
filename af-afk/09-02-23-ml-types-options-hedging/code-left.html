@@ -1,0 +1,33 @@
+<div style="display: flex; flex-direction: row; justify-content: space-between">
+	<pre style="padding-right: 20px">
+		<code>
+let payoff_call_maturity future_price spot_price exercise_price =
+  let c = future_price /. spot_price in
+  max 0. @@ c *. spot_price -. exercise_price
+
+let rec payoff_call' u p_u d p_d s k r = function
+  | 0 -> payoff_call'_maturity k k s
+  | n ->
+    let n1 = n - 1 in
+    let up_payoff = payoff_call' u p_u d p_d k u r n1 in
+    let up = p_u *. up_payoff in
+    let down_payoff = payoff_call' u p_u d p_d k d r n1 in
+    let down = 1. -. p_d *. down_payoff in
+    let c = 1. /. (1. +. r) in
+    max
+      (payoff_call'_maturity (up +. down) k s)
+      ((up +. down) *. c)
+	   	</code>
+	</pre>
+	<pre>
+		<code>
+u: max up at the end of the option's life
+d: max down at the end of the option's life
+p_u: probability of going up
+p_d: probability of going down
+s: strike price
+k: exercise price
+r: risk free rate
+		</code>
+	</pre>
+</div>

@@ -1,0 +1,34 @@
+<div style="display: flex; flex-direction: row; justify-content: space-between">
+	<pre style="padding-right: 20px">
+		<code>
+type code = Switch of switch | Signal of (module Signal_s)
+
+type program = code list
+
+let signal_twitter = (module Twitter : Switch_s)
+
+let program_twitter =
+  [ Signal signal_twitter
+  ; Switch (JUMP "something")
+  ; Switch (RETURN 0.075)
+  ; Switch (JUMP "bad")
+  ; Switch (JUMPDEST "bad")
+  ; Switch (RETURN 0.02) ]
+
+		</code>
+	</pre>
+	<pre>
+		<code>
+TWITTER "dogecoin popular"		# "?"
+JUMP something			# "0.5"
+JUMP bad				# "0.5"
+
+something: JUMPDEST		# "0.5"
+RETURN 0.075
+
+bad: JUMPDEST			# 0.5
+RETURN 0.02
+
+		</code>
+	</pre>
+</div>
