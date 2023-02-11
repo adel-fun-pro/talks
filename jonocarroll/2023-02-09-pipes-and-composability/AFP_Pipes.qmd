@@ -1,0 +1,928 @@
+---
+title: "Pipes, composability and plumbing across languages"
+author: "Jonathan Carroll"
+format: revealjs
+css: styles.css
+from: markdown+emoji
+title-slide-attributes:
+    data-background-image: "images/warppipes.jpg"
+    data-background-size: contain
+    data-background-opacity: "0.4"
+---
+
+## About me
+
+![](images/jono.jpg){.absolute top="0" left="1000" width="200" height="200"}
+
+![](images/qr.png){.absolute top="300" left="800" width="400" height="400"}
+
+Hi, I'm Jonathan Carroll.
+
+<br>
+
+I mainly write R. I'm learning Python, Julia, and Rust. 
+
+I did my PhD in Fortran, but I've dabbled in 
+
+lisp, javascript, C/C++, perl, PHP, 
+
+Matlab, Mathematica, x86-asm, ... 
+
+:bird: [\@carroll_jono](https://twitter.com/home)
+
+![](images/GitHub.png){.centerimg} [\@jonocarroll](https://github.com/jonocarroll)
+
+:spider_web: [jcarroll.com.au](https://jcarroll.com.au)
+
+## Back to the beginning
+
+I started with linux where the pipe is fairly common
+
+<br>
+
+```{sh}
+#| code-line-numbers: false
+#| eval: false
+#| echo: true
+$ cat file
+```
+
+``` sh
+this is a file
+it has many lines
+using `cat` you can print all of them
+but maybe there are too many
+...
+```
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Back to the beginning
+
+I started with linux where the pipe is fairly common
+
+<br>
+
+```{sh}
+#| code-line-numbers: false
+#| eval: false
+#| echo: true
+$ cat file | head -n 3
+```
+
+``` sh
+this is a file
+it has many lines
+using `cat` you can print all of them
+```
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Back to the beginning
+
+I started with linux where the pipe is fairly common
+
+```{sh}
+#| code-line-numbers: false
+#| eval: false
+#| echo: true
+$ cat file | head -n 3 | wc -c
+```
+
+``` sh
+71
+```
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Back to the beginning
+
+In general, \*nix commands are functions
+
+```{bash}
+#| code-line-numbers: false
+#| echo: true
+#| eval: false
+function add {
+  a=$1
+  b=$2
+  add=$(( a + b ))
+  echo $add
+}
+```
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Back to the beginning
+
+In general, \*nix commands are functions
+
+```{bash}
+#| code-line-numbers: false
+#| echo: true
+#| eval: false
+function add {
+  a=$1
+  b=$2
+  add=$(( a + b ))
+  echo $add
+}
+
+add 3 5 
+```
+
+``` sh
+8
+```
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Back to the beginning
+
+But that takes positional arguments - the \*nix pipe uses `/dev/stdin`
+
+```{bash}
+#| code-line-numbers: false
+#| echo: true
+#| eval: false
+function add2 {
+  a=${*:-$(</dev/stdin)}
+  b=2
+  add=$(( a + b ))
+  echo $add
+}
+
+add2 5
+```
+
+``` sh
+7
+```
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Back to the beginning
+
+But that takes positional arguments - the \*nix pipe uses `/dev/stdin`
+
+```{bash}
+#| code-line-numbers: false
+#| echo: true
+#| eval: false
+function add2 {
+  a=${*:-$(</dev/stdin)}
+  b=2
+  add=$(( a + b ))
+  echo $add
+}
+
+add2
+7^D
+```
+
+``` sh
+9
+```
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Back to the beginning
+
+But that takes positional arguments - the \*nix pipe uses `/dev/stdin`
+
+```{bash}
+#| code-line-numbers: false
+#| echo: true
+#| eval: false
+function add2 {
+  a=${*:-$(</dev/stdin)}
+  b=2
+  add=$(( a + b ))
+  echo $add
+}
+
+echo 7 | add2
+```
+
+``` sh
+9
+```
+
+::: {.fragment .fade-in}
+We've "redirected" the standard input *into* the argument of the function.
+:::
+
+::: footer
+<https://en.wikipedia.org/wiki/Pipeline_(Unix)>
+:::
+
+## Piping
+
+<br>
+
+::: {style="font-size: 300%;"}
+$$x \ | \ f() \ \ \longrightarrow \ \ \ f(x)$$
+:::
+
+## Piping
+
+What if we wanted to use the second argument?
+
+<br>
+
+::: {style="font-size: 250%;"}
+$$x \ | \ f(a, b) \ \longrightarrow \ \ f(x, b)$$
+:::
+
+## Composition
+
+::: {style="font-size: 200%;"}
+$$h = g \circ f \ \ \longrightarrow \ \ h(x) = g(f(x))$$
+:::
+
+::: {.fragment .fade-in}
+::: {style="font-size: 200%;"}
+$$x \ | \ f() \ | \ g() \ \ \longrightarrow \ \ g(f(x))$$
+:::
+:::
+
+## More shell, less egg
+
+> Read a file of text, determine the n most frequently used words, and print out a sorted list of those words along with their frequencies.
+
+::: {.fragment .fade-in}
+> Knuth wrote his program in WEB, a literate programming system of his own devising that used Pascal as its programming language. His program used a clever, purpose-built data structure for keeping track of the words and frequency counts; and the article interleaved with it presented the program lucidly.
+:::
+
+::: footer
+<https://leancrew.com/all-this/2011/12/more-shell-less-egg/>
+
+<https://en.wikipedia.org/wiki/Douglas_McIlroy>
+
+<https://en.wikipedia.org/wiki/Donald_Knuth>
+:::
+
+## More shell, less egg
+
+```{bash}
+#| eval: false
+#| echo: true
+tr -cs A-Za-z '\n' |
+tr A-Z a-z |
+sort |
+uniq -c |
+sort -rn |
+sed ${1}q
+```
+
+<br>
+
+::: {style="font-size: 50%;"}
+1.  Make one-word lines by transliterating the complement (-c) of the alphabet into newlines (note the quoted newline), and squeezing out (-s) multiple newlines.
+2.  Transliterate upper case to lower case.
+3.  Sort to bring identical words together.
+4.  Replace each run of duplicate words with a single representative and include a count (-c).
+5.  Sort in reverse (-r) numeric (-n) order.
+6.  Pass through a stream editor; quit (q) after printing the number of lines designated by the script's first parameter (\${1}).
+:::
+
+::: footer
+<https://leancrew.com/all-this/2011/12/more-shell-less-egg/>
+:::
+
+## R
+
+```{r}
+#| echo: true
+mtcars
+```
+
+## R
+
+```{r}
+#| echo: true
+head(mtcars)
+```
+
+## R
+
+```{r}
+#| echo: true
+colSums(head(mtcars))
+```
+
+## R
+
+```{r}
+#| echo: true
+colSums(head(mtcars, n = 8), na.rm = TRUE)
+```
+
+## R
+
+::: {style="font-style: italic; color: mediumslateblue; font-family: cursive;"}
+| Little bunny Foo Foo
+| Went hopping through the forest
+| Scooping up the field mice
+| And bopping them on the head
+:::
+
+<br>
+
+::: {.fragment .fade-in}
+``` r
+foo_foo <- little_bunny()
+```
+:::
+
+::: footer
+<https://r4ds.had.co.nz/pipes.html>
+:::
+
+## R
+
+Composition?
+
+<br>
+
+``` r
+bop(
+  scoop(
+    hop(foo_foo, through = forest),
+    up = field_mice
+  ), 
+  on = head
+)
+```
+
+::: footer
+<https://r4ds.had.co.nz/pipes.html>
+:::
+
+## R
+
+Intermediate variables?
+
+<br>
+
+``` r
+foo_foo_1 <- hop(foo_foo, through = forest)
+foo_foo_2 <- scoop(foo_foo_1, up = field_mice)
+foo_foo_3 <- bop(foo_foo_2, on = head)
+```
+
+::: footer
+<https://r4ds.had.co.nz/pipes.html>
+:::
+
+## R
+
+Update a variable?
+
+<br>
+
+``` r
+foo_foo <- hop(foo_foo, through = forest)
+foo_foo <- scoop(foo_foo, up = field_mice)
+foo_foo <- bop(foo_foo, on = head)
+```
+
+::: footer
+<https://r4ds.had.co.nz/pipes.html>
+:::
+
+## R
+
+Update a variable? Why not make it arbitrary?
+
+<br>
+
+``` r
+. <- foo_foo
+. <- hop(., through = forest)
+. <- scoop(., up = field_mice)
+. <- bop(., on = head)
+```
+
+## Pipes in R
+
+![](images/magrittr.png){fig-align="center"}
+
+::: footer
+<https://magrittr.tidyverse.org/>
+:::
+
+## Pipes in R
+
+In general, replace composition
+
+``` r
+h(g(f(x)))
+```
+
+with an equivalent
+
+``` r
+. <- x
+. <- f(.)
+. <- g(.)
+. <- h(.)
+```
+
+and turn that into a "piped flow"
+
+``` r
+x %>% f() %>% g() %>% h()
+```
+
+## Pipes in R
+
+![](images/magrittr.png){.absolute top="0" left="1000" width="100" height="100"}
+
+<br>
+
+```{r}
+#| echo: true
+library(magrittr)
+
+mtcars
+```
+
+## Pipes in R
+
+![](images/magrittr.png){.absolute top="0" left="1000" width="100" height="100"}
+
+<br>
+
+```{r}
+#| echo: true
+library(magrittr)
+
+mtcars %>% head()
+```
+
+## Pipes in R
+
+![](images/magrittr.png){.absolute top="0" left="1000" width="100" height="100"}
+
+<br>
+
+```{r}
+#| echo: true
+library(magrittr)
+
+mtcars %>% head() %>% colSums()
+```
+
+## Pipes in R
+
+![](images/magrittr.png){.absolute top="0" left="1000" width="100" height="100"}
+
+<br>
+
+::: {style="font-style: italic; color: mediumslateblue; font-family: cursive;"}
+| Little bunny Foo Foo
+| Went hopping through the forest
+| Scooping up the field mice
+| And bopping them on the head
+:::
+
+<br>
+
+``` r
+library(magrittr)
+
+foo_foo %>%
+  hop(through = forest) %>%
+  scoop(up = field_mice) %>%
+  bop(on = head)
+```
+
+## R
+
+Functions are "first class citizens" which means we can pass *functions* through pipes
+
+```{r}
+#| echo: true
+head
+```
+
+## R
+
+Functions are "first class citizens" which means we can pass *functions* through pipes
+
+```{r}
+#| echo: true
+head %>% class()
+```
+
+## R
+
+Functions are "first class citizens" which means we can pass *functions* through pipes
+
+```{r}
+#| echo: true
+head %>% class() %>% nchar()
+```
+
+## R 
+
+Typically, a pipe can only "insert" the LHS into the RHS once, sometimes with a placeholder.
+
+<br>
+
+This particular implementation also enables a re-usable placeholder
+
+```{r}
+#| echo: true
+powers <- function(x, y, z) list(x, y^2, z^3)
+1:3 %>% powers(., ., .)
+```
+
+## Native Pipe in R
+
+Recently, R gained a 'native pipe'
+
+```{r}
+#| echo: true
+mtcars |> head() |> colSums()
+```
+
+<br>
+
+This is implemented in the parser - pure syntactic sugar.
+
+<br>
+<br>
+<br>
+
+::: {.fragment .fade-in}
+::: {style="font-size: 50%;"}
+\* some caveats about placeholder (`_`)
+:::
+:::
+
+## Compose in R
+
+This is easy to define
+
+<br>
+
+``` r
+compose <- function(f, g    ) function(x) { f(g(x)) }
+```
+
+<br>
+
+and also supported by packages
+
+<br>
+
+``` r
+not_null <- purrr::compose(`!`, is.null)
+```
+
+## Python
+
+Method chaining is more common, but if you squint, it's pretty similar
+
+``` python
+import pandas as pd
+
+data_frame = pd.read_csv('E:/Marks.csv', index_col = 0)
+
+(data_frame.assign(Percentage = (data_frame['Marks']*100)/70)
+   .drop(columns = 'Gender')
+   .sort_values('Percentage', ascending = False)
+   .head(3))
+```
+
+          Age   Marks    Percentage
+    ID
+    4     40    68       97.142857
+    2     20    65       92.857143
+    3     30    60       85.714286
+
+::: footer
+<https://www.tutorialspoint.com/Explain-Python-class-method-chaining>
+:::
+
+## Python
+
+Method chaining is more common, but if you squint, it's pretty similar
+
+```{python}
+#| echo: true
+import numpy as np
+
+np.arange(1, 32, 2).reshape(4, 4).clip(9, 25)
+```
+
+::: footer
+<https://www.tutorialspoint.com/Explain-Python-class-method-chaining>
+:::
+
+## Pipes in Python
+
+pandas 0.16.2 added support for `DataFrame.pipe()`
+
+``` python
+# df is a DataFrame
+# f, g, and h are functions that take and return DataFrames
+f(g(h(df), arg1=1), arg2=2, arg3=3)
+
+(
+    df.pipe(h)
+    .pipe(g, arg1=1)
+    .pipe(f, arg2=2, arg3=3)
+)
+```
+
+::: footer
+<https://pandas.pydata.org/pandas-docs/stable/whatsnew/v0.16.2.html#pipe>
+:::
+
+## Pipes in Julia
+
+``` julia
+using DataFrames
+using RDatasets
+
+mtcars = dataset("datasets", "mtcars")
+
+mtcars |> nrow
+```
+
+    32
+
+## Pipes in Julia
+
+``` julia
+using DataFrames
+using RDatasets
+using Pipe
+
+mtcars = dataset("datasets", "mtcars")
+
+@pipe mtcars |> nrow
+```
+
+    32
+
+## Pipes in Julia
+
+``` julia
+["a", "list", "of", "strings"] .|> [uppercase, reverse, titlecase, length]
+```
+
+    4-element Array{Any,1}:
+      "A"
+      "tsil"
+      "Of"
+     7
+
+## Pipes in F\#
+
+``` f#
+// forward pipe
+(|>) // : ('a -> ('a -> 'b) -> 'b)
+
+// forward composition
+(>>) // : (('a -> 'b) -> ('b -> 'c) -> 'a -> 'c)
+
+let add1 x = x + 1
+let times2 x = x * 2
+let subtract20 x = x - 20
+
+// pipeline
+100 |> add1 |> times2 |> subtract20 // 182
+
+// composition
+let addTimesSubtract = add1 >> times2 >> subtract20 // : int -> int
+```
+
+::: footer
+<https://spin.atomicobject.com/2021/08/26/fsharp-operators-pipeline-composition/>
+:::
+
+## Pipes in OCaml
+
+The pipeline operator `|>` in OCaml is similar to R and Julia
+
+``` ocaml
+let rec ( -- ) i j = if i > j then [] else i :: i + 1 -- j
+let square x = x * x
+let sum = List.fold_left ( + ) 0
+
+let sum_sq n =
+  0 -- n              (* [0;1;2;...;n]   *)
+  |> List.map square  (* [0;1;4;...;n*n] *)
+  |> sum              (*  0+1+4+...+n*n  *)
+```
+
+::: footer
+<https://cs3110.github.io/textbook/chapters/hop/pipelining.html>
+:::
+
+## Pipes in Javascript
+
+Here, they look a bit different...
+
+``` javascript
+reverse(get6Characters(uppercase(getName({ name: 'Buckethead' }))));
+// 'TEKCUB'
+
+pipe(
+  getName,
+  uppercase,
+  get6Characters,
+  reverse
+)({ name: 'Buckethead' });
+// 'TEKCUB'
+```
+
+::: footer
+<https://www.freecodecamp.org/news/pipe-and-compose-in-javascript-5b04004ac937/>
+:::
+
+## Pipes in Javascript
+
+And the opposite is commonly defined
+
+``` javascript
+compose(
+  reverse,
+  get6Characters,
+  uppercase,
+  getName
+)({ name: 'Buckethead' });
+```
+
+::: footer
+<https://www.freecodecamp.org/news/pipe-and-compose-in-javascript-5b04004ac937/>
+:::
+
+## Pipes in Javascript
+
+But they do offer some unique functionality
+
+``` javascript
+pipe = (...functions) => (value) => {
+  debugger;
+
+  return functions.reduce((currentValue, currentFunction) => {
+    debugger;
+
+    return currentFunction(currentValue);
+  }, value);
+};
+```
+
+::: footer
+<https://www.freecodecamp.org/news/pipe-and-compose-in-javascript-5b04004ac937/>
+:::
+
+## Pipes in Javascript
+
+The debate rages on...
+
+``` javascript
+# Hack pipe
+value |> someFunction(1, %, 3) // function calls
+value |> %.someMethod() // method call
+value |> % + 1 // operator
+value |> [%, 'b', 'c'] // Array literal
+value |> {someProp: %} // object literal
+value |> await % // awaiting a Promise
+value |> (yield %) // yielding a generator value
+
+# F# pipe
+'123.45' |> Number
+Number('123.45')
+```
+
+::: footer
+[https://github.com/tc39/proposal-pipeline-operator](https://github.com/tc39/proposal-pipeline-operator)
+[https://2ality.com/2022/01/pipe-operator.html](https://2ality.com/2022/01/pipe-operator.html)
+:::
+
+## Chaining in Javascript
+
+Method chaining is fairly common, and again, if we squint...
+
+<br>
+
+``` javascript
+[1, 2, 3].map(n => n + 1).join(',').length
+```
+
+## Pipes in Ruby
+
+``` ruby
+foo()
+  |> bar 1, 2
+  |> display
+
+foo()
+  .bar(1, 2)
+  .display
+```
+
+## Pipes in Ruby
+
+The `|>` operator has lower precedence than `.`, so you can do this:
+
+<br>
+
+``` ruby
+a .. b |> each do
+end
+```
+
+<br>
+
+With the `.`, you need parentheses
+
+``` ruby
+(a..b).each do
+end
+```
+
+:::footer
+[https://bugs.ruby-lang.org/issues/15799#note-21](https://bugs.ruby-lang.org/issues/15799#note-21)
+:::
+
+## Pipes in Clojure
+
+``` clojure
+(defn output [a b] (print a b))
+(-> (+ 4 6) (output 5)); 10 5
+
+(defn square-five-square [n]
+  (-> n ; let n = 2
+      (#(* %1 %1)) ; 2 * 2 = 4
+      (#(+ 5 %1)) ; 4 + 5 = 9
+      (#(* %1 %1)))) ; 9 * 9 = 81
+```
+
+::: footer
+[https://www.bradcypert.com/threading-pipelines-in-clojure/](https://www.bradcypert.com/threading-pipelines-in-clojure/-)
+:::
+
+## Pros and Cons of Pipes
+
+:::: {.columns}
+::: {.column width="50%"}
+::: {style="color: green; font-size: 75%"}
+* Pro:
+  + Arguments stay with function calls
+  + No need to read "from the inside out"
+  + More "readable"
+  + Can sometimes "re-use" the passed input
+  + Encourages a more 'functional' design
+  + Clear intention
+:::
+:::
+
+
+::: {.column width="50%"}
+::: {style="color: red; font-size: 75%"}
+* Con:
+  + Can be harder to debug (stacktrace)
+  + No autocomplete on methods (?)
+  + Need to "mentally shift" arguments when reading
+  + First argument needs to be "the data"
+  + Take care with operator precedence
+  + Depending on implementation, performance issues
+:::
+:::
+::::
+
+## Thanks!
+
+
+![](images/jono.jpg){.absolute top="0" left="1000" width="200" height="200"}
+
+![](images/qr.png){.absolute top="300" left="800" width="400" height="400"}
+
+<br>
+
+:bird: [\@carroll_jono](https://twitter.com/home)
+
+![](images/GitHub.png){.centerimg} [\@jonocarroll](https://github.com/jonocarroll)
+
+:spider_web: [jcarroll.com.au](https://jcarroll.com.au)
